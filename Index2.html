@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionSim</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #captureButton {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>VisionSim</h1>
+    <button id="captureButton">Take Picture</button>
+    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+    <img id="preview" style="max-width: 100%; display: none;">
+    <p id="description"></p>
+    
+    <script>
+        document.getElementById('captureButton').addEventListener('click', function() {
+            document.getElementById('imageInput').click();
+        });
+
+        document.getElementById('imageInput').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = async function() {
+                    const base64Image = reader.result.split(',')[1];
+                    document.getElementById('preview').src = reader.result;
+                    document.getElementById('preview').style.display = 'block';
+                    
+                    try {
+                        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer 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',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                model: "gpt-4o-mini",
+                                messages: [
+                                    {
+                                        role: "user",
+                                        content: [
+                                            { "type": "text", "text": "Describe this image as if you are an accessibility device clipped onto a visually impaired person's shirt. Summarize in 50 words unless extra details are critical. Include key details like objects, people, colors, and actions. If the image is unclear or ambiguous, provide a warning before the description." },
+                                            { "type": "image_url", "image_url": { "url": `data:image/jpeg;base64,${base64Image}` } }
+                                        ]
+                                    }
+                                ],
+                                max_tokens: 300
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        const description = data.choices?.[0]?.message?.content || 'No description available';
+                        document.getElementById('description').textContent = description;
+                        
+                        // Speak the description in a standard American accent
+                        const speech = new SpeechSynthesisUtterance(description);
+                        speech.lang = 'en-US';
+                        window.speechSynthesis.speak(speech);
+                    } catch (error) {
+                        console.error('Error:', error);
+                        document.getElementById('description').textContent = 'Error processing image';
+                    }
+                };
+            }
+        });
+    </script>
+</body>
+</html>
